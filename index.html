@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <style>
+        #auth-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f4f6f9; z-index: 999999; display: flex;
+            justify-content: center; align-items: center; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #333;
+        }
+        .auth-box { 
+            background: #ffffff; padding: 30px; border-radius: 16px; text-align: center; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 85%; max-width: 350px; border: 1px solid #e0e0e0;
+        }
+        .auth-box h3 { margin-top: 0; color: #1a73e8; font-size: 22px; }
+        .auth-box input[type="password"] { 
+            width: 100%; padding: 14px; margin: 15px 0 10px 0; border-radius: 8px; 
+            border: 1px solid #ccc; background: #fafafa; color: #333; font-size: 16px; box-sizing: border-box; 
+        }
+        .auth-remember {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            margin-bottom: 20px; font-size: 14px; color: #666; cursor: pointer;
+        }
+        .auth-remember input { width: 18px; height: 18px; cursor: pointer; }
+        .auth-box button { 
+            width: 100%; padding: 14px; background: #1a73e8; color: white; border: none; 
+            border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(26,115,232,0.3);
+        }
+    </style>
+    <script>
+        const MEIN_PASSWORT = "Geheim1969";
+
+        document.addEventListener("DOMContentLoaded", function() {
+            if (sessionStorage.getItem("app_authenticated") === "true" || localStorage.getItem("app_authenticated") === "true") return;
+
+            let overlay = document.createElement("div");
+            overlay.id = "auth-overlay";
+            overlay.innerHTML = `
+                <div class="auth-box">
+                    <h3>Hausverwaltung</h3>
+                    <p style="font-size: 14px; color: #666; margin-bottom: 5px;">Bitte Passwort eingeben:</p>
+                    <form id="auth-form">
+                        <input type="password" id="auth-pw" placeholder="Passwort" required autocomplete="current-password">
+                        <label class="auth-remember">
+                            <input type="checkbox" id="auth-save"> Passwort auf Gerät merken
+                        </label>
+                        <button type="submit">Anmelden</button>
+                    </form>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            document.getElementById("auth-form").addEventListener("submit", function(e) {
+                e.preventDefault();
+                let eingabe = document.getElementById("auth-pw").value;
+                let remember = document.getElementById("auth-save").checked;
+
+                if (eingabe === MEIN_PASSWORT) {
+                    if (remember) {
+                        localStorage.setItem("app_authenticated", "true");
+                    } else {
+                        sessionStorage.setItem("app_authenticated", "true");
+                    }
+                    overlay.remove();
+                } else {
+                    alert("Falsches Passwort!");
+                }
+            });
+        });
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" href="icon.jpg">
+    <link rel="icon" type="image/jpeg" href="icon.jpg">
+    <title>Abrechnungs- & Eigenbeleg-Manager - Wittelsbacherstr. 25 in 86556 Kühbach</title>
+    
+    <!-- FIREBASE SDKs (Compat / Web v9) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --primary-hover: #1d4ed8;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --background: #f1f5f9;
+            --text: #0f172a;
+            --border: #cbd5e1;
+            --card: #ffffff;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: var(--background); color: var(--text); padding: 15px; }
+        .container { max-width: 950px; margin: 0 auto; }
+        
+        .cloud-bar {
+            background: #dcfce7; border: 1px solid #22c55e; color: #15803d;
+            padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; font-weight: bold;
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;
+        }
+        .tab-nav { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 3px solid var(--primary); padding-bottom: 5px; }
+        .tab-btn { background: #e2e8f0; color: #475569; border: none; padding: 12px 20px; font-size: 1rem; font-weight: bold; border-radius: 8px 8px 0 0; cursor: pointer; flex: 1; text-align: center; }
+        .tab-btn.active { background: var(--primary); color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        h2, h3 { color: var(--primary); margin-top: 0; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid var(--border); }
+        .card h2 { font-size: 1.1rem; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; }
+        .form-group { margin-bottom: 15px; display: flex; flex-direction: column; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; color: #475569; }
+        input, select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; }
+        .grid-3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; align-items: end; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        
+        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        button:hover { opacity: 0.9; }
+        .btn-sm { padding: 5px 10px; font-size: 0.8rem; width: auto; }
+        .btn-danger { background: var(--danger); }
+        .btn-success { background: var(--success); }
+        .btn-edit { background-color: #2563eb; padding: 5px 10px; font-size: 0.8rem; border-radius: 4px; width: auto; color: white; margin-right: 4px; border: none; cursor: pointer; }
+        .btn-gen { background-color: #7c3aed; margin-bottom: 10px; }
+        .btn-seasonal { background-color: #0284c7; margin-bottom: 10px; }
+        .btn-bulk { background-color: #d97706; margin-bottom: 10px; }
+        .btn-delete { background-color: #ef4444; padding: 5px 10px; font-size: 0.8rem; border-radius: 4px; width: auto; color: white; border: none; cursor: pointer; }
+        
+        .summary-table, #logTable, .overview-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+        .summary-table th, .summary-table td, #logTable th, #logTable td, .overview-table th, .overview-table td { padding: 8px; border: 1px solid var(--border); text-align: left; vertical-align: middle; }
+        .summary-table th, #logTable th, .overview-table th { background: #f8fafc; color: #334155; }
+        
+        .status-select { font-weight: bold; padding: 8px 2px; text-align: center; }
+        
+        /* HOCHWERTIGE FARB-MARKIERUNGEN */
+        .group-ug { border-top: 3px solid #475569; }
+        .row-ug td { background-color: #f8fafc !important; border-left: 6px solid #475569 !important; }
+        
+        .group-eg { border-top: 3px solid #047857; }
+        .row-eg td { background-color: #ecfdf5 !important; border-left: 6px solid #047857 !important; }
+        
+        .group-dg1 { border-top: 3px solid #b45309; }
+        .row-dg1 td { background-color: #fffbeb !important; border-left: 6px solid #b45309 !important; }
+        
+        .group-dg2 { border-top: 3px solid #1d4ed8; }
+        .row-dg2 td { background-color: #eff6ff !important; border-left: 6px solid #1d4ed8 !important; }
+        
+        .group-dg3 { border-top: 3px solid #6b21a8; }
+        .row-dg3 td { background-color: #f3e8ff !important; border-left: 6px solid #6b21a8 !important; }
+
+        .name-row-td { padding: 8px 12px !important; border-bottom: 3px solid #cbd5e1 !important; }
+        .name-container { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .name-container label { margin-bottom: 0; white-space: nowrap; color: #334155; font-size: 0.75rem; font-weight: bold; }
+        
+        .cost-row { display: flex; gap: 10px; margin-bottom: 10px; background: #f8fafc; padding: 10px; border-radius: 6px; align-items: center; }
+        .live-result-box { margin-top: 15px; padding: 15px; border-radius: 8px; font-size: 0.95rem; line-height: 1.6; border-left: 5px solid var(--primary); background: #f8fafc; }
+        .generator-card { background: #f3e8ff; border: 1px solid #c084fc; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .seasonal-card { background: #e0f2fe; border: 1px solid #7dd3fc; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .bulk-card { background: #fef3c7; border: 1px solid #fcd34d; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .overview-card { background: #eff6ff; border: 1px solid #93c5fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .total-box { text-align: right; font-size: 1.2rem; font-weight: bold; margin-top: 15px; color: var(--primary); }
+
+        .grand-total-banner { background: #1e3a8a; color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .grand-total-banner div { font-size: 0.9rem; opacity: 0.9; }
+        .grand-total-banner span { font-size: 1.4rem; font-weight: bold; display: block; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        .stat-card { background: #f8fafc; border: 1px solid var(--border); padding: 12px; border-radius: 8px; font-size: 0.85rem; }
+        .stat-card strong { color: var(--primary); display: block; font-size: 1rem; margin-top: 2px; }
+
+        /* DRUCK-EINSTELLUNGEN */
+        @media print {
+            body * { visibility: hidden; }
+            #print-section, #print-section * { visibility: visible; }
+            #print-section {
+                position: absolute; left: 0; top: 0; width: 100%;
+                background: white !important; border: none !important; box-shadow: none !important;
+                padding: 0 !important; margin: 0 !important;
+            }
+            #print-section > h2 { display: none !important; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="cloud-bar no-print">
+        <span>🟢 Cloud-Verbindung aktiv (Echtzeit-Synchronisierung)</span>
+        <span id="syncStatus" style="font-weight: normal; font-size: 0.8rem;">Synchronisiert</span>
+    </div>
+    
+    <!-- NAVIGATION -->
+    <div class="tab-nav no-print" style="margin-top: 10px;">
+        <button class="tab-btn active" onclick="switchTab('tab1')">1. Nebenkostenabrechnung</button>
+        <button class="tab-btn" onclick="switchTab('tab2')">2. Eigenbelege & Arbeitsnachweis</button>
+    </div>
+    
+    <!-- REITER 1 -->
+    <div id="tab1" class="tab-content active">
+        <div class="overview-card no-print">
+            <h3 style="color: #1e40af; margin-bottom: 8px;">📊 Gebäudeübersicht & Flächenanteile (Gesamt: 377,85 m²)</h3>
+            <table class="overview-table">
+                <thead><tr><th>Wohneinheit</th><th>Lage / Beschreibung</th><th>Wohnfläche (m²)</th><th>Anteil am Haus (%)</th></tr></thead>
+                <tbody>
+                    <tr style="border-left: 4px solid #475569;"><td><strong>UG</strong></td><td>Untergeschosswohnung</td><td>71,00 m²</td><td>18,79 %</td></tr>
+                    <tr style="border-left: 4px solid #047857;"><td><strong>EG</strong></td><td>Erdgeschosswohnung (Fr. Falkner)</td><td>118,23 m²</td><td>31,29 %</td></tr>
+                    <tr style="border-left: 4px solid #b45309;"><td><strong>DG 1</strong></td><td>Dachgeschoss 1 (Appartement)</td><td>45,14 m²</td><td>11,95 %</td></tr>
+                    <tr style="border-left: 4px solid #1d4ed8;"><td><strong>DG 2</strong></td><td>Dachgeschoss 2 (Wohnung)</td><td>102,65 m²</td><td>27,17 %</td></tr>
+                    <tr style="border-left: 4px solid #6b21a8;"><td><strong>DG 3</strong></td><td>Dachgeschoss 3 (Ausgebautes DG)</td><td>40,83 m²</td><td>10,80 %</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card no-print">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                <h2 style="margin-bottom: 0;">1. Wohnungen, Vorauszahlungen, ISTA & Müllgebühr pro Einheit</h2>
+                <button class="btn-success btn-sm" onclick="saveCloud(true)" style="background: var(--success); font-size: 0.9rem; padding: 8px 16px;">💾 Änderungen jetzt speichern</button>
+            </div>
+            <p style="font-size:0.85rem; color:#475569; margin-bottom:12px;">
+                <em>Hinweis: Tragen Sie bei ISTA den Endbetrag laut ISTA-Abrechnung ein (dort sind Vorauszahlungen von ISTA meist schon verrechnet). Die monatliche Vorauszahlung gilt für die allgemeinen Nebenkosten.</em>
+            </p>
+            <table class="summary-table">
+                <thead><tr><th>Wohnung</th><th>Status</th><th>Kaltmiete (€)</th><th>Vorauszahlung (€ / Mon.)</th><th>Mon.</th></tr></thead>
+                <tbody>
+                    <!-- UG -->
+                    <tr class="row-ug group-ug">
+                        <td><strong>UG</strong> <small>(71,00 m²)</small></td>
+                        <td><select id="status_ug" class="status-select" onchange="updateWohnungStatus('ug')"><option value="selbst">S (Eigen)</option><option value="vermietet">V (Verm.)</option></select></td>
+                        <td><input type="number" id="rent_ug" placeholder="0.00" onchange="updateAll()"></td>
+                        <td><input type="number" id="nk_ug" placeholder="0.00" onchange="updateAll()"></td>
+                        <td><input type="number" id="months_ug" value="12" onchange="updateAll()"></td>
+                    </tr>
+                    <tr class="row-ug"><td colspan="5" class="name-row-td">
+                        <div class="name-container">
+                            <label>Mieter:</label><input type="text" id="name_ug" value="Selbstbezug / R. Schumann" onchange="updateAll()" style="flex:1.5;">
+                            <label>ISTA (Endbetrag €):</label><input type="number" id="ista_ug" value="0.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label>Müll (€):</label><input type="number" id="müll_ug" value="0.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label style="color:#1d4ed8; cursor:pointer;"><input type="checkbox" id="wechsel_ug" onchange="toggleMieterwechsel('ug')" style="width:auto; margin-right:4px;"> Mieterwechsel</label>
+                        </div>
+                        <div id="sub_ug" style="display:none; margin-top:8px; padding-top:8px; border-top:1px dashed #cbd5e1;" class="sub-mieter">
+                            <div class="name-container" style="margin-bottom:6px;">
+                                <label style="color:#b45309;">Vormieter:</label><input type="text" id="vorn_ug" placeholder="Name Vormieter" onchange="updateAll()" style="flex:1.5;">
+                                <label>Mon:</label><input type="number" id="vorm_ug" value="6" onchange="updateAll()" style="flex:0.5;">
+                                <label>Vorausz. (€/M):</label><input type="number" id="vornk_ug" value="0" onchange="updateAll()" style="flex:0.8;">
+                                <label>ISTA (€):</label><input type="number" id="vorista_ug" value="0" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (€):</label><input type="number" id="vormüll_ug" value="0" onchange="updateAll()" style="flex:0.8;">
+                            </div>
+                            <div class="name-container">
+                                <label style="color:#047857;">Nachmieter:</label><input type="text" id="nachn_ug" placeholder="Name Nachmieter" onchange="updateAll()" style="flex:1.5;">
+                                <label>Mon:</label><input type="number" id="nachm_ug" value="6" onchange="updateAll()" style="flex:0.5;">
+                                <label>Vorausz. (€/M):</label><input type="number" id="nachnk_ug" value="0" onchange="updateAll()" style="flex:0.8;">
+                                <label>ISTA (€):</label><input type="number" id="nachista_ug" value="0" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (€):</label><input type="number" id="nachmüll_ug" value="0" onchange="updateAll()" style="flex:0.8;">
+                            </div>
+                        </div>
+                    </td></tr>
+
+                    <!-- EG -->
+                    <tr class="row-eg group-eg">
+                        <td><strong>EG</strong> <small>(118,23 m²)</small></td>
+                        <td><select id="status_eg" class="status-select" onchange="updateWohnungStatus('eg')"><option value="vermietet">V (Verm.)</option><option value="selbst">S (Eigen)</option></select></td>
+                        <td><input type="number" id="rent_eg" value="850" onchange="updateAll()"></td>
+                        <td><input type="number" id="nk_eg" value="200" onchange="updateAll()"></td>
+                        <td><input type="number" id="months_eg" value="12" onchange="updateAll()"></td>
+                    </tr>
+                    <tr class="row-eg"><td colspan="5" class="name-row-td">
+                        <div class="name-container">
+                            <label>Mieter:</label><input type="text" id="name_eg" value="Frau Tanja Falkner" onchange="updateAll()" style="flex:1.5;">
+                            <label>ISTA (Endbetrag €):</label><input type="number" id="ista_eg" value="650.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label>Müll (€):</label><input type="number" id="müll_eg" value="100.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label style="color:#1d4ed8; cursor:pointer;"><input type="checkbox" id="wechsel_eg" onchange="toggleMieterwechsel('eg')" style="width:auto; margin-right:4px;"> Mieterwechsel</label>
+                        </div>
+                        <div id="sub_eg" style="display:none; margin-top:8px; padding-top:8px; border-top:1px dashed #cbd5e1;" class="sub-mieter">
+                            <div class="name-container" style="margin-bottom:6px;">
+                                <label style="color:#b45309;">Vormieter:</label><input type="text" id="vorn_eg" placeholder="Name Vormieter" onchange="updateAll()" style="flex:1.5;">
+                                <label>Mon:</label><input type="number" id="vorm_eg" value="6" onchange="updateAll()" style="flex:0.5;">
+                                <label>Vorausz. (€/M):</label><input type="number" id="vornk_eg" value="100" onchange="updateAll()" style="flex:0.8;">
+                                <label>ISTA (€):</label><input type="number" id="vorista_eg" value="300" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (€):</label><input type="number" id="vormüll_eg" value="50" onchange="updateAll()" style="flex:0.8;">
+                            </div>
+                            <div class="name-container">
+                                <label style="color:#047857;">Nachmieter:</label><input type="text" id="nachn_eg" placeholder="Name Nachmieter" onchange="updateAll()" style="flex:1.5;">
+                                <label>Mon:</label><input type="number" id="nachm_eg" value="6" onchange="updateAll()" style="flex:0.5;">
+                                <label>Vorausz. (€/M):</label><input type="number" id="nachnk_eg" value="100" onchange="updateAll()" style="flex:0.8;">
+                                <label>ISTA (€):</label><input type="number" id="nachista_eg" value="350" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (€):</label><input type="number" id="nachmüll_eg" value="50" onchange="updateAll()" style="flex:0.8;">
+                            </div>
+                        </div>
+                    </td></tr>
+
+                    <!-- DG 1 -->
+                    <tr class="row-dg1 group-dg1">
+                        <td><strong>DG 1</strong> <small>(45,14 m²)</small></td>
+                        <td><select id="status_dg1" class="status-select" onchange="updateWohnungStatus('dg1')"><option value="vermietet">V (Verm.)</option><option value="selbst">S (Eigen)</option></select></td>
+                        <td><input type="number" id="rent_dg1" value="450" onchange="updateAll()"></td>
+                        <td><input type="number" id="nk_dg1" value="100" onchange="updateAll()"></td>
+                        <td><input type="number" id="months_dg1" value="12" onchange="updateAll()"></td>
+                    </tr>
+                    <tr class="row-dg1"><td colspan="5" class="name-row-td">
+                        <div class="name-container">
+                            <label>Mieter:</label><input type="text" id="name_dg1" value="Mieter DG 1" onchange="updateAll()" style="flex:1.5;">
+                            <label>ISTA (Endbetrag €):</label><input type="number" id="ista_dg1" value="350.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label>Müll (€):</label><input type="number" id="müll_dg1" value="70.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label style="color:#1d4ed8; cursor:pointer;"><input type="checkbox" id="wechsel_dg1" onchange="toggleMieterwechsel('dg1')" style="width:auto; margin-right:4px;"> Mieterwechsel</label>
+                        </div>
+                        <div id="sub_dg1" style="display:none; margin-top:8px; padding-top:8px; border-top:1px dashed #cbd5e1;" class="sub-mieter">
+                            <div class="name-container" style="margin-bottom:6px;">
+                                <label style="color:#b45309;">Vormieter:</label><input type="text" id="vorn_dg1" placeholder="Name Vormieter" onchange="updateAll()" style="flex:1.5;">
+                                <label>Mon:</label><input type="number" id="vorm_dg1" value="6" onchange="updateAll()" style="flex:0.5;">
+                                <label>Vorausz. (€/M):</label><input type="number" id="vornk_dg1" value="50" onchange="updateAll()" style="flex:0.8;">
+                                <label>ISTA (€):</label><input type="number" id="vorista_dg1" value="150" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (€):</label><input type="number" id="vormüll_dg1" value="35" onchange="updateAll()" style="flex:0.8;">
+                            </div>
+                            <div class="name-container">
+                                <label style="color:#047857;">Nachmieter:</label><input type="text" id="nachn_dg1" placeholder="Name Nachmieter" onchange="updateAll()" style="flex:1.5;">
+                                <label>Mon:</label><input type="number" id="nachm_dg1" value="6" onchange="updateAll()" style="flex:0.5;">
+                                <label>Vorausz. (€/M):</label><input type="number" id="nachnk_dg1" value="50" onchange="updateAll()" style="flex:0.8;">
+                                <label>ISTA (€):</label><input type="number" id="nachista_dg1" value="200" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (€):</label><input type="number" id="nachmüll_dg1" value="35" onchange="updateAll()" style="flex:0.8;">
+                            </div>
+                        </div>
+                    </td></tr>
+
+                    <!-- DG 2 -->
+                    <tr class="row-dg2 group-dg2">
+                        <td><strong>DG 2</strong> <small>(102,65 m²)</small></td>
+                        <td><select id="status_dg2" class="status-select" onchange="updateWohnungStatus('dg2')"><option value="vermietet">V (Verm.)</option><option value="selbst">S (Eigen)</option></select></td>
+                        <td><input type="number" id="rent_dg2" value="750" onchange="updateAll()"></td>
+                        <td><input type="number" id="nk_dg2" value="180" onchange="updateAll()"></td>
+                        <td><input type="number" id="months_dg2" value="12" onchange="updateAll()"></td>
+                    </tr>
+                    <tr class="row-dg2"><td colspan="5" class="name-row-td">
+                        <div class="name-container">
+                            <label>Mieter:</label><input type="text" id="name_dg2" value="Mieter DG 2" onchange="updateAll()" style="flex:1.5;">
+                            <label>ISTA (Endbetrag €):</label><input type="number" id="ista_dg2" value="550.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label>Müll (€):</label><input type="number" id="müll_dg2" value="90.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label style="color:#1d4ed8; cursor:pointer;"><input type="checkbox" id="wechsel_dg2" onchange="toggleMieterwechsel('dg2')" style="width:auto; margin-right:4px;"> Mieterwechsel</label>
+                        </div>
+                        <div id="sub_dg2" style="display:none; margin-top:8px; padding-top:8px; border-top:1px dashed #cbd5e1;" class="sub-mieter">
+                            <div class="name-container" style="margin-bottom:6px;">
+                                <label style="color:#b45309;">Vormieter:</label><input type="text" id="vorn_dg2" placeholder="Name Vormieter" onchange="updateAll()" style="flex:1.5;">
+                                <label>Mon:</label><input type="number" id="vorm_dg2" value="6" onchange="updateAll()" style="flex:0.5;">
+                                <label>Vorausz. (€/M):</label><input type="number" id="vornk_dg2" value="90" onchange="updateAll()" style="flex:0.8;">
+                                <label>ISTA (€):</label><input type="number" id="vorista_dg2" value="250" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (€):</label><input type="number" id="vormüll_dg2" value="45" onchange="updateAll()" style="flex:0.8;">
+                            </div>
+                            <div class="name-container">
+                                <label style="color:#047857;">Nachmieter:</label><input type="text" id="nachn_dg2" placeholder="Name Nachmieter" onchange="updateAll()" style="flex:1.5;">
+                                <label>Mon:</label><input type="number" id="nachm_dg2" value="6" onchange="updateAll()" style="flex:0.5;">
+                                <label>Vorausz. (€/M):</label><input type="number" id="nachnk_dg2" value="90" onchange="updateAll()" style="flex:0.8;">
+                                <label>ISTA (€):</label><input type="number" id="nachista_dg2" value="300" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (€):</label><input type="number" id="nachmüll_dg2" value="45" onchange="updateAll()" style="flex:0.8;">
+                            </div>
+                        </div>
+                    </td></tr>
+
+                    <!-- DG 3 -->
+                    <tr class="row-dg3 group-dg3">
+                        <td><strong>DG 3</strong> <small>(40,83 m²)</small></td>
+                        <td><select id="status_dg3" class="status-select" onchange="updateWohnungStatus('dg3')"><option value="selbst">S (Eigen)</option><option value="vermietet">V (Verm.)</option></select></td>
+                        <td><input type="number" id="rent_dg3" placeholder="0.00" onchange="updateAll()"></td>
+                        <td><input type="number" id="nk_dg3" placeholder="0.00" onchange="updateAll()"></td>
+                        <td><input type="number" id="months_dg3" value="12" onchange="updateAll()"></td>
+                    </tr>
+                    <tr class="row-dg3"><td colspan="5" class="name-row-td">
+                        <div class="name-container">
+                            <label>Mieter:</label><input type="text" id="name_dg3" value="Selbstbezug / R. Schumann" onchange="updateAll()" style="flex:1.5;">
+                            <label>ISTA (Endbetrag €):</label><input type="number" id="ista_dg3" value="0.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label>Müll (€):</label><input type="number" id="müll_dg3" value="0.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label style="color:#1d4ed8; cursor:pointer;"><input type="checkbox" id="wechsel_dg3" onchange="toggleMieterwechsel('dg3')" style="width:auto; margin-right:4px;"> Mieterwechsel</label>
+                        </div>
+                        <div id="sub_dg3" style="display:none; margin-top:8px; padding-top:8px; border-top:1px dashed #cbd5e1;" class="sub-mieter">
+                            <div class="name-container" style="margin-bottom:6px;">
+                                <label style="color:#b45309;">Vormieter:</label><input type="text" id="vorn_dg3" placeholder="Name Vormieter" onchange="updateAll()" style="flex:1.5;">
+                                <label>Mon:</label><input type="number" id="vorm_dg3" value="6" onchange="updateAll()" style="flex:0.5;">
+                                <label>Vorausz. (€/M):</label><input type="number" id="vornk_dg3" value="0" onchange="updateAll()" style="flex:0.8;">
+                                <label>ISTA (€):</label><input type="number" id="vorista_dg3" value="0" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (€):</label><input type="number" id="vormüll_dg3" value="0" onchange="updateAll()" style="flex:0.8;">
+                            </div>
+                            <div class="name-container">
+                                <label style="color:#047857;">Nachmieter:</label><input type="text" id="nachn_dg3" placeholder="Name Nachmieter" onchange="updateAll()" style="flex:1.5;">
+                                <label>Mon:</label><input type="number" id="nachm_dg3" value="6" onchange="updateAll()" style="flex:0.5;">
+                                <label>Vorausz. (€/M):</label><input type="number" id="nachnk_dg3" value="0" onchange="updateAll()" style="flex:0.8;">
+                                <label>ISTA (€):</label><input type="number" id="nachista_dg3" value="0" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (€):</label><input type="number" id="nachmüll_dg3" value="0" onchange="updateAll()" style="flex:0.8;">
+                            </div>
+                        </div>
+                    </td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card no-print">
+            <h2>2. Allgemeine Betriebskosten des Hauses</h2>
+            <div id="costItemsContainer"></div>
+            <div class="grid-3" style="margin-top: 15px; background: #e2e8f0; padding: 10px; border-radius: 6px;">
+                <div><label>Kostenart</label><input type="text" id="newCostName" placeholder="z. B. Dachrinnenreinigung"></div>
+                <div><label>Betrag (€)</label><input type="number" id="newCostVal" placeholder="0.00"></div>
+                <button class="btn-success" onclick="addCostItem()">+ Hinzufügen</button>
+            </div>
+        </div>
+
+        <!-- DIESER BEREICH WIRD GEDRUCKT -->
+        <div class="card" id="print-section">
+            <h2>3. Nebenkostenabrechnung</h2>
+            <div class="form-group no-print">
+                <label>Partei / Wohnung für Vorschau & Druck auswählen</label>
+                <select id="select_wohnung" onchange="updateAll()">
+                    <option value="ug">Untergeschoss (Gesamt / Standard)</option>
+                    <option value="eg" selected>Erdgeschoss (Fr. Falkner / Standard)</option>
+                    <option value="dg1">Dachgeschoss 1 (Standard)</option>
+                    <option value="dg2">Dachgeschoss 2 (Standard)</option>
+                    <option value="dg3">Dachgeschoss 3 (Standard)</option>
+                </select>
+            </div>
+            <div class="form-group no-print">
+                <label>Abrechnungsjahr</label>
+                <input type="text" id="billing_year" value="2026" oninput="updateAll()">
+            </div>
+            <div id="screenLiveResult" class="live-result-box">Berechne...</div>
+            <button type="button" onclick="window.print()" class="btn-success no-print" style="background: var(--primary); margin-top: 15px;">Abrechnung drucken</button>
+        </div>
+    </div>
+
+    <!-- REITER 2 -->
+    <div id="tab2" class="tab-content no-print">
+        <!-- AUTOMATISCHER JAHRESPLANER (ICS MÜLL) -->
+        <div class="generator-card">
+            <h3 style="color: #581c87; margin-bottom: 5px;">📅 Müll-Jahresplan aus ICS erzeugen</h3>
+            <p style="font-size:0.85rem; color: #6b21a8; margin-bottom: 10px;">
+                Laden Sie die .ics-Datei hoch. Mülltonnendienste werden automatisch am Vortag (herausstellen) und am Leerungstag (zurückstellen) eingetragen.
+            </p>
+            <div class="form-grid">
+                <div class="form-group"><label>ICS-Datei:</label><input type="file" id="icsFileInput" accept=".ics"></div>
+                <div class="form-group"><label>Stundensatz (€):</label><input type="number" id="genRate" value="15.00" step="0.50"></div>
+                <div class="form-group" style="justify-content: end;"><button class="btn-gen" onclick="generateYearData()">⚡ Mülltermine einlesen</button></div>
+            </div>
+        </div>
+
+        <!-- SAISONALE AUFGABEN -->
+        <div class="seasonal-card">
+            <h3 style="color: #0369a1; margin-bottom: 5px;">☀️❄️ Saisonale Hausmeistertätigkeiten (Garten, Winter, Treppe)</h3>
+            <p style="font-size:0.85rem; color: #0369a1; margin-bottom: 10px;">
+                Generieren Sie automatisch jahreszeitlich passende Aufgaben für <strong>2026</strong> (Treppenhaus wöchentlich, Garten von April–Oktober, Winterdienst in den Wintermonaten).
+            </p>
+            <div class="form-grid">
+                <div class="form-group"><label>Stundensatz (€):</label><input type="number" id="seasonalRate" value="15.00" step="0.50"></div>
+                <div class="form-group" style="justify-content: end;"><button class="btn-seasonal" onclick="generateSeasonalData()">⚡ Saison-Plan erzeugen (2026)</button></div>
+            </div>
+        </div>
+
+        <!-- NEU: KATEGORIE-STUNDENSATZ UND ZEIT (STUNDEN) ANPASSEN -->
+        <div class="bulk-card">
+            <h3 style="color: #b45309; margin-bottom: 5px;">⚙️ Stundensatz & Zeit für eine ganze Kategorie anpassen</h3>
+            <p style="font-size:0.85rem; color: #b45309; margin-bottom: 10px;">
+                Hier können Sie für <strong>alle Einträge einer bestimmten Kategorie</strong> gleichzeitig den Stundensatz und/oder die Stunden (z.B. 0,17 Std. für Müll) ändern.
+            </p>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Kategorie:</label>
+                    <select id="bulkCat">
+                        <option value="Hausmeistertätigkeit">Hausmeistertätigkeit (Müll etc.)</option>
+                        <option value="Treppenhausreinigung">Treppenhausreinigung</option>
+                        <option value="Gartenpflege" selected>Gartenpflege</option>
+                        <option value="Winterdienst">Winterdienst</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Neuer Stundensatz (€):</label><input type="number" id="bulkNewRate" value="15.00" step="0.50"></div>
+                <div class="form-group"><label>Neue Stunden (z.B. 0.17):</label><input type="number" id="bulkNewHours" value="0.25" step="0.01"></div>
+                <div class="form-group" style="justify-content: end;"><button class="btn-bulk" onclick="applyBulkChange()">⚡ Werte für Kategorie anpassen</button></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📝 Eigenbeleg / Arbeitsleistung erfassen</h2>
+            <div class="form-grid">
+                <div class="form-group"><label>Datum</label><input type="date" id="ebDate"></div>
+                <div class="form-group"><label>Kategorie</label><select id="ebCat"><option value="Hausmeistertätigkeit">Hausmeistertätigkeit</option><option value="Treppenhausreinigung">Treppenhausreinigung</option><option value="Gartenpflege">Gartenpflege</option><option value="Winterdienst">Winterdienst</option></select></div>
+                <div class="form-group"><label>Beschreibung</label><input type="text" id="ebDesc" placeholder="z.B. Treppenhaus gewischt"></div>
+                <div class="form-group"><label>Stunden</label><input type="number" id="ebHours" step="0.01" placeholder="0.25"></div>
+                <div class="form-group"><label>Satz (€)</label><input type="number" id="ebRate" value="15.00"></div>
+                <div class="form-group"><label>Auslagen (€)</label><input type="number" id="ebExp" value="0.00"></div>
+            </div>
+            <button class="btn-success" onclick="addEigenbeleg()">+ Speichern</button>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                <h2 style="margin-bottom: 0;">Gespeicherte Einträge & Stundenübersicht</h2>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="margin-bottom: 0; white-space: nowrap;">🔍 Filtern nach:</label>
+                    <select id="filterCat" onchange="renderEntries()" style="padding: 6px; font-size: 0.85rem;">
+                        <option value="alle">Alle Kategorien anzeigen</option>
+                        <option value="Hausmeistertätigkeit">Hausmeistertätigkeit (Müll etc.)</option>
+                        <option value="Treppenhausreinigung">Treppenhausreinigung</option>
+                        <option value="Gartenpflege">Gartenpflege</option>
+                        <option value="Winterdienst">Winterdienst</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- GESAMT-ZUSAMMENFASSUNGS-BANNER -->
+            <div class="grand-total-banner">
+                <div>
+                    ⏱️ Gesamtsumme aller geleisteten Stunden
+                    <span id="banner_total_hours">0,00 Std.</span>
+                </div>
+                <div style="text-align: right;">
+                    💶 Gesamtbetrag aller Eigenbelege
+                    <span id="banner_total_sum">0,00 €</span>
+                </div>
+            </div>
+
+            <!-- DETAILLIERTE STUNDEN- UND KOSTEN-ÜBERSICHT NACH KATEGORIEN -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    🧹 Treppenhausreinigung
+                    <strong id="stat_treppe">0,00 Std. (0,00 €)</strong>
+                </div>
+                <div class="stat-card">
+                    🌱 Gartenpflege
+                    <strong id="stat_garten">0,00 Std. (0,00 €)</strong>
+                </div>
+                <div class="stat-card">
+                    ❄️ Winterdienst & Schneeräumen
+                    <strong id="stat_winter">0,00 Std. (0,00 €)</strong>
+                </div>
+                <div class="stat-card">
+                    🗑️ Hausmeister / Müll / Hof
+                    <strong id="stat_hausm">0,00 Std. (0,00 €)</strong>
+                </div>
+            </div>
+
+            <table id="logTable">
+                <thead><tr><th>Datum</th><th>Beschreibung</th><th>Std. & Satz</th><th>Gesamt</th><th>Aktion</th></tr></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+            <div class="total-box">Gesamt (Ansicht): <span id="grandTotal">0,00 €</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchTab(id) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+
+    const totalArea = 377.85;
+    const areas = { ug: 71.00, eg: 118.23, dg1: 45.14, dg2: 102.65, dg3: 40.83 };
+    
+    let costItems = [
+        { id: '1', name: 'Grundsteuerbescheid', value: 650 }, 
+        { id: '2', name: 'Wohngebäudeversicherung', value: 950 },
+        { id: '3', name: 'Haushaftpflichtversicherung', value: 180 },
+        { id: '4', name: 'Kaminkehrer', value: 220 },
+        { id: '5', name: 'Brenner Kundendienst', value: 300 },
+        { id: '6', name: 'Strom Allgemeinzähler', value: 250 }
+    ];
+    let entries = [];
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyANWkvunIJmTvHb7XWq28861f5cTu90",
+        authDomain: "wittelsbacherstr-255v.firebaseapp.com",
+        databaseURL: "https://wittelsbacherstr-255v-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "wittelsbacherstr-255v"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    window.onload = function() {
+        document.getElementById('ebDate').valueAsDate = new Date();
+        db.ref('wittelsbacher_data_v10').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                if (data.costs && data.costs.length > 0) costItems = data.costs;
+                if (data.entries) {
+                    entries = data.entries.map(e => ({
+                        ...e,
+                        rate: e.rate !== undefined ? e.rate : 15.00
+                    }));
+                }
+                if (data.wohnungen) {
+                    ['ug', 'eg', 'dg1', 'dg2', 'dg3'].forEach(k => {
+                        let w = data.wohnungen[k];
+                        if (w) {
+                            if (document.getElementById('status_' + k)) {
+                                document.getElementById('status_' + k).value = w.status || 'selbst';
+                                updateWohnungStatus(k);
+                            }
+                            if (document.getElementById('rent_' + k)) document.getElementById('rent_' + k).value = w.rent;
+                            if (document.getElementById('nk_' + k)) document.getElementById('nk_' + k).value = w.nk;
+                            if (document.getElementById('months_' + k)) document.getElementById('months_' + k).value = w.months;
+                            if (document.getElementById('name_' + k)) document.getElementById('name_' + k).value = w.name || '';
+                            if (document.getElementById('ista_' + k)) document.getElementById('ista_' + k).value = w.ista || 0;
+                            if (document.getElementById('müll_' + k)) document.getElementById('müll_' + k).value = w.muell || 0;
+                            
+                            if (w.wechsel) {
+                                document.getElementById('wechsel_' + k).checked = w.wechsel.active;
+                                toggleMieterwechsel(k, false);
+                                if(document.getElementById('vorn_' + k)) document.getElementById('vorn_' + k).value = w.wechsel.vorn || '';
+                                if(document.getElementById('vorm_' + k)) document.getElementById('vorm_' + k).value = w.wechsel.vorm || 6;
+                                if(document.getElementById('vornk_' + k)) document.getElementById('vornk_' + k).value = w.wechsel.vornk || 0;
+                                if(document.getElementById('vorista_' + k)) document.getElementById('vorista_' + k).value = w.wechsel.vorista || 0;
+                                if(document.getElementById('vormüll_' + k)) document.getElementById('vormüll_' + k).value = w.wechsel.vormüll || 0;
+
+                                if(document.getElementById('nachn_' + k)) document.getElementById('nachn_' + k).value = w.wechsel.nachn || '';
+                                if(document.getElementById('nachm_' + k)) document.getElementById('nachm_' + k).value = w.wechsel.nachm || 6;
+                                if(document.getElementById('nachnk_' + k)) document.getElementById('nachnk_' + k).value = w.wechsel.nachnk || 0;
+                                if(document.getElementById('nachista_' + k)) document.getElementById('nachista_' + k).value = w.wechsel.nachista || 0;
+                                if(document.getElementById('nachmüll_' + k)) document.getElementById('nachmüll_' + k).value = w.wechsel.nachmüll || 0;
+                            }
+                        }
+                    });
+                }
+                rebuildSelectOptions();
+                renderCosts();
+                renderEntries();
+                updateAll();
+            }
+        });
+        
+        ['ug', 'eg', 'dg1', 'dg2', 'dg3'].forEach(k => updateWohnungStatus(k));
+        rebuildSelectOptions();
+        renderCosts();
+        updateAll();
+    };
+
+    function toggleMieterwechsel(whg, doSave = true) {
+        let active = document.getElementById('wechsel_' + whg).checked;
+        let subDiv = document.getElementById('sub_' + whg);
+        subDiv.style.display = active ? 'block' : 'none';
+        rebuildSelectOptions();
+        if(doSave) saveCloud(false);
+        updateAll();
+    }
+
+    function rebuildSelectOptions() {
+        let sel = document.getElementById('select_wohnung');
+        let currentVal = sel.value;
+        sel.innerHTML = '';
+
+        ['ug', 'eg', 'dg1', 'dg2', 'dg3'].forEach(k => {
+            let area = areas[k];
+            let iswechsel = document.getElementById('wechsel_' + k).checked;
+            let names = {'ug':'Untergeschoss', 'eg':'Erdgeschoss', 'dg1':'Dachgeschoss 1', 'dg2':'Dachgeschoss 2', 'dg3':'Dachgeschoss 3'}[k];
+
+            if (iswechsel) {
+                let vName = document.getElementById('vorn_' + k).value || 'Vormieter';
+                let nName = document.getElementById('nachn_' + k).value || 'Nachmieter';
+                
+                let opt1 = document.createElement('option');
+                opt1.value = k + '_vor';
+                opt1.text = `${names} (${area} m²) - Vormieter: ${vName}`;
+                sel.appendChild(opt1);
+
+                let opt2 = document.createElement('option');
+                opt2.value = k + '_nach';
+                opt2.text = `${names} (${area} m²) - Nachmieter: ${nName}`;
+                sel.appendChild(opt2);
+            } else {
+                let opt = document.createElement('option');
+                opt.value = k;
+                opt.text = `${names} (${area} m²)`;
+                sel.appendChild(opt);
+            }
+        });
+
+        for(let i=0; i<sel.options.length; i++) {
+            if(sel.options[i].value === currentVal) {
+                sel.selectedIndex = i;
+                break;
+            }
+        }
+    }
+
+    function updateWohnungStatus(whg) {
+        let statusVal = document.getElementById('status_' + whg).value;
+        let isSelbst = (statusVal === 'selbst');
+        
+        document.getElementById('rent_' + whg).disabled = isSelbst;
+        document.getElementById('nk_' + whg).disabled = isSelbst;
+        document.getElementById('months_' + whg).disabled = isSelbst;
+        document.getElementById('name_' + whg).disabled = isSelbst;
+        
+        updateAll();
+    }
+
+    function getEigenbelegeByCategories() {
+        let catTotals = { 'Hausmeistertätigkeit': 0, 'Treppenhausreinigung': 0, 'Gartenpflege': 0, 'Winterdienst': 0 };
+        entries.forEach(e => {
+            let rate = e.rate !== undefined ? e.rate : 15.00;
+            let sum = (e.hours * rate) + (e.expenses || 0);
+            if (catTotals[e.category] !== undefined) {
+                catTotals[e.category] += sum;
+            } else {
+                catTotals[e.category] = sum;
+            }
+        });
+        return catTotals;
+    }
+
+    function renderCosts() {
+        let container = document.getElementById('costItemsContainer');
+        container.innerHTML = '';
+        
+        costItems.forEach(item => {
+            let div = document.createElement('div');
+            div.className = 'cost-row';
+            div.innerHTML = `<div style="flex:2;"><strong>${item.name}</strong></div><div style="flex:1;"><input type="number" value="${item.value}" onchange="updateCost('${item.id}', this.value)"></div><button class="btn-delete btn-sm" onclick="removeCost('${item.id}')">Löschen</button>`;
+            container.appendChild(div);
+        });
+
+        let catTotals = getEigenbelegeByCategories();
+        for (let cat in catTotals) {
+            if (catTotals[cat] > 0) {
+                let div = document.createElement('div');
+                div.className = 'cost-row';
+                div.style.background = '#fef3c7';
+                div.innerHTML = `
+                    <div style="flex:2;"><strong>🛠️ ${cat}</strong> <small style="color:#b45309;">(aus Eigenbelegen)</small></div>
+                    <div style="flex:1;"><input type="number" value="${catTotals[cat].toFixed(2)}" disabled style="background:#fef3c7; font-weight:bold;"></div>
+                    <div style="width:70px; text-align:center; font-size:0.75rem; color:#92400e;">Auto</div>
+                `;
+                container.appendChild(div);
+            }
+        }
+    }
+
+    function addCostItem() {
+        let name = document.getElementById('newCostName').value.trim();
+        let val = parseFloat(document.getElementById('newCostVal').value) || 0;
+        if (!name) return alert('Name fehlt!');
+        costItems.push({ id: 'c_' + Date.now(), name, value: val });
+        document.getElementById('newCostName').value = '';
+        document.getElementById('newCostVal').value = '';
+        saveCloud(false);
+        renderCosts();
+        updateAll();
+    }
+
+    function updateCost(id, val) {
+        let item = costItems.find(i => i.id === id);
+        if (item) item.value = parseFloat(val) || 0;
+        saveCloud(false);
+        updateAll();
+    }
+
+    function removeCost(id) {
+        costItems = costItems.filter(i => i.id !== id);
+        saveCloud(false);
+        renderCosts();
+        updateAll();
+    }
+
+    function addEigenbeleg() {
+        let date = document.getElementById('ebDate').value;
+        let category = document.getElementById('ebCat').value;
+        let desc = document.getElementById('ebDesc').value;
+        let hours = parseFloat(document.getElementById('ebHours').value) || 0;
+        let rate = parseFloat(document.getElementById('ebRate').value) || 15;
+        let expenses = parseFloat(document.getElementById('ebExp').value) || 0;
+        if (!date) return alert('Datum angeben!');
+
+        entries.push({ id: Date.now(), date, category, desc, hours, rate, expenses });
+        document.getElementById('ebDesc').value = '';
+        document.getElementById('ebHours').value = '';
+        document.getElementById('ebExp').value = '';
+        saveCloud(false);
+        renderEntries();
+        renderCosts();
+        updateAll();
+    }
+
+    function renderEntries() {
+        entries.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        let filterVal = document.getElementById('filterCat').value;
+        let tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        let total = 0;
+        let grandTotalHours = 0;
+
+        let stats = {
+            'Treppenhausreinigung': { hours: 0, sum: 0 },
+            'Gartenpflege': { hours: 0, sum: 0 },
+            'Winterdienst': { hours: 0, sum: 0 },
+            'Hausmeistertätigkeit': { hours: 0, sum: 0 }
+        };
+
+        entries.forEach(e => {
+            let rate = e.rate !== undefined ? e.rate : 15.00;
+            let sum = (e.hours * rate) + (e.expenses || 0);
+            
+            grandTotalHours += e.hours;
+
+            if (stats[e.category]) {
+                stats[e.category].hours += e.hours;
+                stats[e.category].sum += sum;
+            }
+
+            if (filterVal !== 'alle' && e.category !== filterVal) return;
+
+            total += sum;
+            let parts = e.date.split('-');
+            let formattedDate = parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : e.date;
+
+            let tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${formattedDate}</td>
+                <td><strong>${e.category}</strong><br><small>${e.desc}</small></td>
+                <td>${e.hours} Std. à ${rate.toFixed(2)} €</td>
+                <td>${sum.toFixed(2)} €</td>
+                <td>
+                    <button class="btn-edit" onclick="editEntry(${e.id})">Ändern</button>
+                    <button class="btn-delete" onclick="deleteEntry(${e.id})">X</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('banner_total_hours').innerText = grandTotalHours.toFixed(2) + ' Std.';
+        document.getElementById('banner_total_sum').innerText = Object.values(stats).reduce((acc, curr) => acc + curr.sum, 0).toFixed(2) + ' €';
+
+        document.getElementById('stat_treppe').innerText = `${stats['Treppenhausreinigung'].hours.toFixed(2)} Std. (${stats['Treppenhausreinigung'].sum.toFixed(2)} €)`;
+        document.getElementById('stat_garten').innerText = `${stats['Gartenpflege'].hours.toFixed(2)} Std. (${stats['Gartenpflege'].sum.toFixed(2)} €)`;
+        document.getElementById('stat_winter').innerText = `${stats['Winterdienst'].hours.toFixed(2)} Std. (${stats['Winterdienst'].sum.toFixed(2)} €)`;
+        document.getElementById('stat_hausm').innerText = `${stats['Hausmeistertätigkeit'].hours.toFixed(2)} Std. (${stats['Hausmeistertätigkeit'].sum.toFixed(2)} €)`;
+
+        document.getElementById('grandTotal').innerText = total.toFixed(2) + ' €';
+    }
+
+    function editEntry(id) {
+        let entry = entries.find(e => e.id === id);
+        if (!entry) return;
+
+        let newDate = prompt("Datum anpassen (JJJJ-MM-TT):", entry.date);
+        if (newDate === null) return;
+
+        let newCat = prompt("Kategorie anpassen (Hausmeistertätigkeit, Treppenhausreinigung, Gartenpflege, Winterdienst):", entry.category);
+        if (newCat === null) return;
+
+        let newDesc = prompt("Beschreibung anpassen:", entry.desc);
+        if (newDesc === null) return;
+
+        let hoursInput = prompt("Stunden anpassen (z.B. 0.17, 0.25, 1.5):", entry.hours);
+        if (hoursInput === null) return;
+        let parsedHours = parseFloat(hoursInput.replace(',', '.'));
+
+        let currentRate = entry.rate !== undefined ? entry.rate : 15.00;
+        let rateInput = prompt("Stundensatz in € anpassen:", currentRate);
+        if (rateInput === null) return;
+        let parsedRate = parseFloat(rateInput.replace(',', '.')) || currentRate;
+
+        entry.date = newDate.trim() || entry.date;
+        if (newCat.trim()) entry.category = newCat.trim();
+        entry.desc = newDesc;
+        entry.hours = !isNaN(parsedHours) ? parsedHours : entry.hours;
+        entry.rate = !isNaN(parsedRate) ? parsedRate : currentRate;
+
+        saveCloud(false);
+        renderEntries();
+        renderCosts();
+        updateAll();
+    }
+
+    function applyBulkChange() {
+        let targetCat = document.getElementById('bulkCat').value;
+        let newRate = parseFloat(document.getElementById('bulkNewRate').value);
+        let newHours = parseFloat(document.getElementById('bulkNewHours').value);
+        
+        if (isNaN(newRate) || isNaN(newHours)) return alert('Bitte gültige Zahlen für Satz und Stunden eingeben!');
+
+        let count = 0;
+        entries.forEach(e => {
+            if (e.category === targetCat) {
+                e.rate = newRate;
+                e.hours = newHours;
+                count++;
+            }
+        });
+
+        if (count === 0) {
+            alert(`Keine Einträge für die Kategorie "${targetCat}" gefunden.`);
+            return;
+        }
+
+        saveCloud(false);
+        renderEntries();
+        renderCosts();
+        updateAll();
+        alert(`Erfolg! Für ${count} Einträge in der Kategorie "${targetCat}" wurde der Stundensatz auf ${newRate.toFixed(2)} € und die Zeit auf ${newHours} Std. angepasst.`);
+    }
+
+    function deleteEntry(id) {
+        entries = entries.filter(e => e.id !== id);
+        saveCloud(false);
+        renderEntries();
+        renderCosts();
+        updateAll();
+    }
+
+    function generateYearData() {
+        let fileInput = document.getElementById('icsFileInput');
+        let rate = parseFloat(document.getElementById('genRate').value) || 15.00;
+        if (!fileInput.files || fileInput.files.length === 0) {
+            return alert('Bitte wählen Sie zuerst eine .ics-Abfallkalenderdatei aus.');
+        }
+
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            let lines = e.target.result.split(/\r\n|\n|\r/);
+            let currentEvent = null;
+            let newMullEntries = [];
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (line === 'BEGIN:VEVENT') {
+                    currentEvent = {};
+                } else if (line === 'END:VEVENT') {
+                    if (currentEvent && currentEvent.date && currentEvent.type) {
+                        let abfuhrDate = new Date(currentEvent.date);
+                        
+                        let rawType = currentEvent.type;
+                        let tonnenArt = "Mülltonne";
+                        let lowerType = rawType.toLowerCase();
+                        
+                        if (lowerType.includes('rest')) {
+                            tonnenArt = "Restmülltonne";
+                        } else if (lowerType.includes('gelb') || lowerType.includes('wertstoff')) {
+                            tonnenArt = "Gelbe Tonne";
+                        } else if (lowerType.includes('bio')) {
+                            tonnenArt = "Biotonne";
+                        } else if (lowerType.includes('papier')) {
+                            tonnenArt = "Papiertonne";
+                        } else {
+                            tonnenArt = rawType.replace(/\s+in\s+Kühbach/gi, '').trim();
+                        }
+
+                        let prevDate = new Date(abfuhrDate);
+                        prevDate.setDate(prevDate.getDate() - 1);
+                        if (abfuhrDate.getMonth() === 0 && abfuhrDate.getDate() === 1) {
+                            prevDate = new Date(abfuhrDate);
+                        }
+                        let prevDateStr = prevDate.toISOString().split('T')[0];
+
+                        newMullEntries.push({
+                            id: Date.now() + Math.random() * 1000,
+                            date: prevDateStr,
+                            category: 'Hausmeistertätigkeit',
+                            desc: `Mülltonnendienst: ${tonnenArt} in Kühbach herausgestellt`,
+                            hours: 0.25,
+                            rate: rate,
+                            expenses: 0
+                        });
+
+                        let abfuhrDateStr = abfuhrDate.toISOString().split('T')[0];
+                        newMullEntries.push({
+                            id: Date.now() + Math.random() * 1000 + 1,
+                            date: abfuhrDateStr,
+                            category: 'Hausmeistertätigkeit',
+                            desc: `Mülltonnendienst: ${tonnenArt} in Kühbach nach Leerung zurückgestellt`,
+                            hours: 0.25,
+                            rate: rate,
+                            expenses: 0
+                        });
+                    }
+                    currentEvent = null;
+                } else if (currentEvent) {
+                    if (line.startsWith('DTSTART')) {
+                        let m = line.match(/(\d{4})(\d{2})(\d{2})/);
+                        if (m) currentEvent.date = `${m[1]}-${m[2]}-${m[3]}`;
+                    } else if (line.startsWith('SUMMARY:')) {
+                        currentEvent.type = line.replace('SUMMARY:', '').trim();
+                    }
+                }
+            });
+
+            entries = entries.filter(item => !item.desc.includes('Mülltonnendienst:'));
+            entries = entries.concat(newMullEntries);
+
+            saveCloud(false);
+            renderEntries();
+            renderCosts();
+            updateAll();
+            alert(`Erfolg! ${newMullEntries.length} Müll-Einträge erstellt.`);
+        };
+        reader.readAsText(fileInput.files[0]);
+    }
+
+    function generateSeasonalData() {
+        let rate = parseFloat(document.getElementById('seasonalRate').value) || 15.00;
+        let seasonalEntries = [];
+        let year = 2026;
+
+        let d = new Date(year, 0, 1);
+        while (d.getDay() !== 5) {
+            d.setDate(d.getDate() + 1);
+        }
+        while (d.getFullYear() === year) {
+            let dateStr = d.toISOString().split('T')[0];
+            seasonalEntries.push({
+                id: Date.now() + Math.random() * 10000,
+                date: dateStr,
+                category: 'Treppenhausreinigung',
+                desc: 'Treppenhaus wöchentlich gereinigt und gewischt',
+                hours: 1.5,
+                rate: rate,
+                expenses: 0
+            });
+            d.setDate(d.getDate() + 7);
+        }
+
+        let loopDate = new Date(year, 0, 1);
+        let endDate = new Date(year, 11, 31);
+
+        while (loopDate <= endDate) {
+            let month = loopDate.getMonth();
+            let dayOfWeek = loopDate.getDay();
+            let dateStr = loopDate.toISOString().split('T')[0];
+
+            if (month === 0 || month === 1 || month === 10 || month === 11) {
+                if (dayOfWeek === 1 || dayOfWeek === 4) {
+                    seasonalEntries.push({
+                        id: Date.now() + Math.random() * 10000,
+                        date: dateStr,
+                        category: 'Winterdienst',
+                        desc: 'Schneeräumen und Streuen / Salzen (Winterdienst)',
+                        hours: 0.75,
+                        rate: rate,
+                        expenses: 0
+                    });
+                }
+            }
+
+            if (month >= 3 && month <= 9) {
+                if (dayOfWeek === 6) {
+                    let dayNum = loopDate.getDate();
+                    if (dayNum % 14 < 7) {
+                        seasonalEntries.push({
+                            id: Date.now() + Math.random() * 10000,
+                            date: dateStr,
+                            category: 'Gartenpflege',
+                            desc: 'Gartenpflege (Rasenmähen, Unkraut jäten, Heckenschnitt)',
+                            hours: 2.0,
+                            rate: rate,
+                            expenses: 0
+                        });
+                    }
+                }
+            }
+
+            loopDate.setDate(loopDate.getDate() + 1);
+        }
+
+        entries = entries.filter(item => !['Treppenhausreinigung', 'Gartenpflege', 'Winterdienst'].includes(item.category) || !item.date.startsWith('2026'));
+        entries = entries.concat(seasonalEntries);
+
+        saveCloud(false);
+        renderEntries();
+        renderCosts();
+        updateAll();
+        alert(`Erfolg! ${seasonalEntries.length} saisonale Aufgaben für 2026 generiert.`);
+    }
+
+    function saveCloud(showAlert = false) {
+        let wohnungenData = {};
+
+        ['ug', 'eg', 'dg1', 'dg2', 'dg3'].forEach(k => {
+            wohnungenData[k] = {
+                status: document.getElementById('status_' + k).value,
+                rent: parseFloat(document.getElementById('rent_' + k).value) || 0,
+                nk: parseFloat(document.getElementById('nk_' + k).value) || 0,
+                months: parseFloat(document.getElementById('months_' + k).value) || 12,
+                name: document.getElementById('name_' + k).value,
+                ista: parseFloat(document.getElementById('ista_' + k).value) || 0,
+                muell: parseFloat(document.getElementById('müll_' + k).value) || 0,
+                wechsel: {
+                    active: document.getElementById('wechsel_' + k).checked,
+                    vorn: document.getElementById('vorn_' + k).value,
+                    vorm: parseFloat(document.getElementById('vorm_' + k).value) || 0,
+                    vornk: parseFloat(document.getElementById('vornk_' + k).value) || 0,
+                    vorista: parseFloat(document.getElementById('vorista_' + k).value) || 0,
+                    vormüll: parseFloat(document.getElementById('vormüll_' + k).value) || 0,
+                    nachn: document.getElementById('nachn_' + k).value,
+                    nachm: parseFloat(document.getElementById('nachm_' + k).value) || 0,
+                    nachnk: parseFloat(document.getElementById('nachnk_' + k).value) || 0,
+                    nachista: parseFloat(document.getElementById('nachista_' + k).value) || 0,
+                    nachmüll: parseFloat(document.getElementById('nachmüll_' + k).value) || 0
+                }
+            };
+        });
+
+        db.ref('wittelsbacher_data_v10').set({ 
+            costs: costItems, 
+            entries: entries, 
+            wohnungen: wohnungenData 
+        }).then(() => {
+            let nowStr = new Date().toLocaleTimeString('de-DE');
+            document.getElementById('syncStatus').innerText = "Gespeichert um " + nowStr;
+            if (showAlert) {
+                alert("Alle Eingaben und Nebenkosten wurden erfolgreich gespeichert!");
+            }
+        });
+    }
+
+    function updateAll() {
+        let selVal = document.getElementById('select_wohnung').value;
+        let whg = selVal.includes('_') ? selVal.split('_')[0] : selVal;
+        let subType = selVal.includes('_') ? selVal.split('_')[1] : 'normal';
+
+        let area = areas[whg];
+        let year = document.getElementById('billing_year').value || '2026';
+        let iswechsel = document.getElementById('wechsel_' + whg).checked;
+
+        let months = 12;
+        let vorauszahlungMonat = 0;
+        let istaKosten = 0;
+        let muellKosten = 0;
+        let tenantName = '';
+
+        if (iswechsel) {
+            if (subType === 'vor') {
+                months = parseFloat(document.getElementById('vorm_' + whg).value) || 0;
+                vorauszahlungMonat = parseFloat(document.getElementById('vornk_' + whg).value) || 0;
+                istaKosten = parseFloat(document.getElementById('vorista_' + whg).value) || 0;
+                muellKosten = parseFloat(document.getElementById('vormüll_' + whg).value) || 0;
+                tenantName = document.getElementById('vorn_' + whg).value || 'Vormieter';
+            } else {
+                months = parseFloat(document.getElementById('nachm_' + whg).value) || 0;
+                vorauszahlungMonat = parseFloat(document.getElementById('nachnk_' + whg).value) || 0;
+                istaKosten = parseFloat(document.getElementById('nachista_' + whg).value) || 0;
+                muellKosten = parseFloat(document.getElementById('nachmüll_' + whg).value) || 0;
+                tenantName = document.getElementById('nachn_' + whg).value || 'Nachmieter';
+            }
+        } else {
+            months = parseFloat(document.getElementById('months_' + whg)?.value) || 12;
+            vorauszahlungMonat = parseFloat(document.getElementById('nk_' + whg)?.value) || 0;
+            istaKosten = parseFloat(document.getElementById('ista_' + whg)?.value) || 0;
+            muellKosten = parseFloat(document.getElementById('müll_' + whg)?.value) || 0;
+            tenantName = document.getElementById('name_' + whg)?.value || '';
+        }
+
+        let gesamtVorauszahlungNk = vorauszahlungMonat * months;
+
+        let totalGeneralCosts = 0;
+        costItems.forEach(c => totalGeneralCosts += c.value);
+        
+        let totalEigenbelege = 0;
+        let catTotals = getEigenbelegeByCategories();
+        for (let cat in catTotals) {
+            totalEigenbelege += catTotals[cat];
+        }
+
+        let generalShare = ((totalGeneralCosts + totalEigenbelege) / totalArea) * area * (months / 12);
+        
+        let totalWohnungKosten = generalShare + istaKosten + muellKosten;
+        let saldo = gesamtVorauszahlungNk - (generalShare + muellKosten) - istaKosten;
+
+        let now = new Date();
+        let printDateStr = now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+        let costDetailsHtml = "";
+        costItems.forEach(c => {
+            let share = (c.value / totalArea) * area * (months / 12);
+            costDetailsHtml += `• ${c.name} (Anteil): <strong>${share.toFixed(2)} €</strong><br>`;
+        });
+        
+        for (let cat in catTotals) {
+            if (catTotals[cat] > 0) {
+                let share = (catTotals[cat] / totalArea) * area * (months / 12);
+                costDetailsHtml += `• 🛠️ ${cat} (Anteil): <strong>${share.toFixed(2)} €</strong><br>`;
+            }
+        }
+
+        document.getElementById('screenLiveResult').innerHTML = `
+            <div style="font-size: 1.15rem; font-weight: bold; color: var(--primary); margin-bottom: 12px; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px;">
+                Nebenkostenabrechnung ${year}<br>
+                <span style="font-size: 0.95rem; font-weight: normal; color: #475569;">Objekt: Wittelsbacherstraße 25, 86556 Kühbach</span>
+            </div>
+            <strong>Wohnung:</strong> ${whg.toUpperCase()} (${area} m², Abrechnungszeitraum: ${months} Monate)<br>
+            <strong>Mieter / Partei:</strong> ${tenantName}<br><br>
+            
+            <u>Gezahlte Vorauszahlung (für allgemeine Nebenkosten):</u><br>
+            • ${vorauszahlungMonat.toFixed(2)} € / Monat × ${months} Monate = <strong>${gesamtVorauszahlungNk.toFixed(2)} €</strong><br><br>
+
+            <u>Kostenübersicht der Einheit:</u><br>
+            ${costDetailsHtml}
+            • ISTA-Heizkosten (Endbetrag inkl. Berücksichtigung von ISTA-Vorauszahlungen): <strong>${istaKosten.toFixed(2)} €</strong><br>
+            • Mülltonnengebühr (direkt): <strong>${muellKosten.toFixed(2)} €</strong><br>
+            <hr style="margin: 12px 0; border: 0; border-top: 1px solid #cbd5e1;">
+            <strong>Gesamtkosten der Einheit:</strong> ${totalWohnungKosten.toFixed(2)} €<br>
+            <strong>Gezahlte Vorauszahlung (Nebenkosten):</strong> ${gesamtVorauszahlungNk.toFixed(2)} €<br><br>
+            <span style="font-size: 1.2rem; color: ${saldo >= 0 ? 'var(--success)' : 'var(--danger)'};">
+                <strong>${saldo >= 0 ? 'Guthaben für Mieter: ' + saldo.toFixed(2) + ' €' : 'Nachzahlung durch Mieter: ' + Math.abs(saldo).toFixed(2) + ' €'}</strong>
+            </span>
+            
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 35px; border-top: 1px dashed #e2e8f0; padding-top: 15px;">
+                <div style="font-size: 0.8rem; color: #64748b;">
+                    Erstellt am: ${printDateStr}
+                </div>
+                <div style="text-align: right; min-width: 180px;">
+                    <div style="border-bottom: 1px solid #334155; height: 35px; margin-bottom: 5px;"></div>
+                    <span style="font-size: 0.85rem; font-weight: bold; color: #334155;">R. Schumann</span><br>
+                    <span style="font-size: 0.75rem; color: #64748b;">Hausverwaltung / Vermieter</span>
+                </div>
+            </div>
+        `;
+    }
+</script>
+</body>
+</html>
