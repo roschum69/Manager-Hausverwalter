@@ -129,7 +129,6 @@
         
         .status-select { font-weight: bold; padding: 8px 2px; text-align: center; }
         
-        /* HOCHWERTIGE FARB-MARKIERUNGEN */
         .group-ug { border-top: 3px solid #475569; }
         .row-ug td { background-color: #f8fafc !important; border-left: 6px solid #475569 !important; }
         
@@ -165,7 +164,6 @@
         .stat-card { background: #f8fafc; border: 1px solid var(--border); padding: 12px; border-radius: 8px; font-size: 0.85rem; }
         .stat-card strong { color: var(--primary); display: block; font-size: 1rem; margin-top: 2px; }
 
-        /* DRUCK-EINSTELLUNGEN */
         @media print {
             body * { visibility: hidden; }
             #print-section, #print-section * { visibility: visible; }
@@ -214,7 +212,7 @@
                 <button class="btn-success btn-sm" onclick="saveCloud(true)" style="background: var(--success); font-size: 0.9rem; padding: 8px 16px;">💾 Änderungen jetzt speichern</button>
             </div>
             <p style="font-size:0.85rem; color:#475569; margin-bottom:12px;">
-                <em>Hinweis: Tragen Sie bei ISTA den Endbetrag laut ISTA-Abrechnung ein (dort sind Vorauszahlungen von ISTA meist schon verrechnet). Die monatliche Vorauszahlung gilt für die allgemeinen Nebenkosten.</em>
+                <em>Hinweis: Tragen Sie hier die volle Müll-Jahresgebühr ein. Das System rechnet diese bei abweichenden Monaten oder bei Mieterwechseln (Vormieter/Nachmieter) automatisch zeitanteilig um.</em>
             </p>
             <table class="summary-table">
                 <thead><tr><th>Wohnung</th><th>Status</th><th>Kaltmiete (€)</th><th>Vorauszahlung (€ / Mon.)</th><th>Mon.</th></tr></thead>
@@ -231,7 +229,7 @@
                         <div class="name-container">
                             <label>Mieter:</label><input type="text" id="name_ug" value="Selbstbezug / R. Schumann" onchange="updateAll()" style="flex:1.5;">
                             <label>ISTA (Endbetrag €):</label><input type="number" id="ista_ug" value="0.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
-                            <label>Müll (€):</label><input type="number" id="müll_ug" value="0.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label>Müll (Jahr €):</label><input type="number" id="müll_ug" value="0.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
                             <label style="color:#1d4ed8; cursor:pointer;"><input type="checkbox" id="wechsel_ug" onchange="toggleMieterwechsel('ug')" style="width:auto; margin-right:4px;"> Mieterwechsel</label>
                         </div>
                         <div id="sub_ug" style="display:none; margin-top:8px; padding-top:8px; border-top:1px dashed #cbd5e1;" class="sub-mieter">
@@ -240,14 +238,14 @@
                                 <label>Mon:</label><input type="number" id="vorm_ug" value="6" onchange="updateAll()" style="flex:0.5;">
                                 <label>Vorausz. (€/M):</label><input type="number" id="vornk_ug" value="0" onchange="updateAll()" style="flex:0.8;">
                                 <label>ISTA (€):</label><input type="number" id="vorista_ug" value="0" onchange="updateAll()" style="flex:0.8;">
-                                <label>Müll (€):</label><input type="number" id="vormüll_ug" value="0" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (Jahr €):</label><input type="number" id="vormüll_ug" value="0" onchange="updateAll()" style="flex:0.8;" title="Tragen Sie hier die Jahresgebühr ein, sie wird automatisch nach Monaten anteilig berechnet">
                             </div>
                             <div class="name-container">
                                 <label style="color:#047857;">Nachmieter:</label><input type="text" id="nachn_ug" placeholder="Name Nachmieter" onchange="updateAll()" style="flex:1.5;">
                                 <label>Mon:</label><input type="number" id="nachm_ug" value="6" onchange="updateAll()" style="flex:0.5;">
                                 <label>Vorausz. (€/M):</label><input type="number" id="nachnk_ug" value="0" onchange="updateAll()" style="flex:0.8;">
                                 <label>ISTA (€):</label><input type="number" id="nachista_ug" value="0" onchange="updateAll()" style="flex:0.8;">
-                                <label>Müll (€):</label><input type="number" id="nachmüll_ug" value="0" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (Jahr €):</label><input type="number" id="nachmüll_ug" value="0" onchange="updateAll()" style="flex:0.8;" title="Tragen Sie hier die Jahresgebühr ein, sie wird automatisch nach Monaten anteilig berechnet">
                             </div>
                         </div>
                     </td></tr>
@@ -257,30 +255,30 @@
                         <td><strong>EG</strong> <small>(118,23 m²)</small></td>
                         <td><select id="status_eg" class="status-select" onchange="updateWohnungStatus('eg')"><option value="vermietet">V (Verm.)</option><option value="selbst">S (Eigen)</option></select></td>
                         <td><input type="number" id="rent_eg" value="850" onchange="updateAll()"></td>
-                        <td><input type="number" id="nk_eg" value="200" onchange="updateAll()"></td>
+                        <td><input type="number" id="nk_eg" value="113.50" onchange="updateAll()"></td>
                         <td><input type="number" id="months_eg" value="12" onchange="updateAll()"></td>
                     </tr>
                     <tr class="row-eg"><td colspan="5" class="name-row-td">
                         <div class="name-container">
                             <label>Mieter:</label><input type="text" id="name_eg" value="Frau Tanja Falkner" onchange="updateAll()" style="flex:1.5;">
-                            <label>ISTA (Endbetrag €):</label><input type="number" id="ista_eg" value="650.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
-                            <label>Müll (€):</label><input type="number" id="müll_eg" value="100.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label>ISTA (Endbetrag €):</label><input type="number" id="ista_eg" value="621.71" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label>Müll (Jahr €):</label><input type="number" id="müll_eg" value="92.50" placeholder="0.00" onchange="updateAll()" style="flex:1;">
                             <label style="color:#1d4ed8; cursor:pointer;"><input type="checkbox" id="wechsel_eg" onchange="toggleMieterwechsel('eg')" style="width:auto; margin-right:4px;"> Mieterwechsel</label>
                         </div>
                         <div id="sub_eg" style="display:none; margin-top:8px; padding-top:8px; border-top:1px dashed #cbd5e1;" class="sub-mieter">
                             <div class="name-container" style="margin-bottom:6px;">
                                 <label style="color:#b45309;">Vormieter:</label><input type="text" id="vorn_eg" placeholder="Name Vormieter" onchange="updateAll()" style="flex:1.5;">
                                 <label>Mon:</label><input type="number" id="vorm_eg" value="6" onchange="updateAll()" style="flex:0.5;">
-                                <label>Vorausz. (€/M):</label><input type="number" id="vornk_eg" value="100" onchange="updateAll()" style="flex:0.8;">
-                                <label>ISTA (€):</label><input type="number" id="vorista_eg" value="300" onchange="updateAll()" style="flex:0.8;">
-                                <label>Müll (€):</label><input type="number" id="vormüll_eg" value="50" onchange="updateAll()" style="flex:0.8;">
+                                <label>Vorausz. (€/M):</label><input type="number" id="vornk_eg" value="113.50" onchange="updateAll()" style="flex:0.8;">
+                                <label>ISTA (€):</label><input type="number" id="vorista_eg" value="0" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (Jahr €):</label><input type="number" id="vormüll_eg" value="92.50" onchange="updateAll()" style="flex:0.8;" title="Tragen Sie hier die Jahresgebühr ein, sie wird automatisch nach Monaten anteilig berechnet">
                             </div>
                             <div class="name-container">
                                 <label style="color:#047857;">Nachmieter:</label><input type="text" id="nachn_eg" placeholder="Name Nachmieter" onchange="updateAll()" style="flex:1.5;">
                                 <label>Mon:</label><input type="number" id="nachm_eg" value="6" onchange="updateAll()" style="flex:0.5;">
-                                <label>Vorausz. (€/M):</label><input type="number" id="nachnk_eg" value="100" onchange="updateAll()" style="flex:0.8;">
-                                <label>ISTA (€):</label><input type="number" id="nachista_eg" value="350" onchange="updateAll()" style="flex:0.8;">
-                                <label>Müll (€):</label><input type="number" id="nachmüll_eg" value="50" onchange="updateAll()" style="flex:0.8;">
+                                <label>Vorausz. (€/M):</label><input type="number" id="nachnk_eg" value="113.50" onchange="updateAll()" style="flex:0.8;">
+                                <label>ISTA (€):</label><input type="number" id="nachista_eg" value="0" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (Jahr €):</label><input type="number" id="nachmüll_eg" value="92.50" onchange="updateAll()" style="flex:0.8;" title="Tragen Sie hier die Jahresgebühr ein, sie wird automatisch nach Monaten anteilig berechnet">
                             </div>
                         </div>
                     </td></tr>
@@ -297,7 +295,7 @@
                         <div class="name-container">
                             <label>Mieter:</label><input type="text" id="name_dg1" value="Mieter DG 1" onchange="updateAll()" style="flex:1.5;">
                             <label>ISTA (Endbetrag €):</label><input type="number" id="ista_dg1" value="350.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
-                            <label>Müll (€):</label><input type="number" id="müll_dg1" value="70.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label>Müll (Jahr €):</label><input type="number" id="müll_dg1" value="70.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
                             <label style="color:#1d4ed8; cursor:pointer;"><input type="checkbox" id="wechsel_dg1" onchange="toggleMieterwechsel('dg1')" style="width:auto; margin-right:4px;"> Mieterwechsel</label>
                         </div>
                         <div id="sub_dg1" style="display:none; margin-top:8px; padding-top:8px; border-top:1px dashed #cbd5e1;" class="sub-mieter">
@@ -306,14 +304,14 @@
                                 <label>Mon:</label><input type="number" id="vorm_dg1" value="6" onchange="updateAll()" style="flex:0.5;">
                                 <label>Vorausz. (€/M):</label><input type="number" id="vornk_dg1" value="50" onchange="updateAll()" style="flex:0.8;">
                                 <label>ISTA (€):</label><input type="number" id="vorista_dg1" value="150" onchange="updateAll()" style="flex:0.8;">
-                                <label>Müll (€):</label><input type="number" id="vormüll_dg1" value="35" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (Jahr €):</label><input type="number" id="vormüll_dg1" value="70.00" onchange="updateAll()" style="flex:0.8;">
                             </div>
                             <div class="name-container">
                                 <label style="color:#047857;">Nachmieter:</label><input type="text" id="nachn_dg1" placeholder="Name Nachmieter" onchange="updateAll()" style="flex:1.5;">
                                 <label>Mon:</label><input type="number" id="nachm_dg1" value="6" onchange="updateAll()" style="flex:0.5;">
                                 <label>Vorausz. (€/M):</label><input type="number" id="nachnk_dg1" value="50" onchange="updateAll()" style="flex:0.8;">
                                 <label>ISTA (€):</label><input type="number" id="nachista_dg1" value="200" onchange="updateAll()" style="flex:0.8;">
-                                <label>Müll (€):</label><input type="number" id="nachmüll_dg1" value="35" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (Jahr €):</label><input type="number" id="nachmüll_dg1" value="70.00" onchange="updateAll()" style="flex:0.8;">
                             </div>
                         </div>
                     </td></tr>
@@ -330,7 +328,7 @@
                         <div class="name-container">
                             <label>Mieter:</label><input type="text" id="name_dg2" value="Mieter DG 2" onchange="updateAll()" style="flex:1.5;">
                             <label>ISTA (Endbetrag €):</label><input type="number" id="ista_dg2" value="550.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
-                            <label>Müll (€):</label><input type="number" id="müll_dg2" value="90.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label>Müll (Jahr €):</label><input type="number" id="müll_dg2" value="90.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
                             <label style="color:#1d4ed8; cursor:pointer;"><input type="checkbox" id="wechsel_dg2" onchange="toggleMieterwechsel('dg2')" style="width:auto; margin-right:4px;"> Mieterwechsel</label>
                         </div>
                         <div id="sub_dg2" style="display:none; margin-top:8px; padding-top:8px; border-top:1px dashed #cbd5e1;" class="sub-mieter">
@@ -339,14 +337,14 @@
                                 <label>Mon:</label><input type="number" id="vorm_dg2" value="6" onchange="updateAll()" style="flex:0.5;">
                                 <label>Vorausz. (€/M):</label><input type="number" id="vornk_dg2" value="90" onchange="updateAll()" style="flex:0.8;">
                                 <label>ISTA (€):</label><input type="number" id="vorista_dg2" value="250" onchange="updateAll()" style="flex:0.8;">
-                                <label>Müll (€):</label><input type="number" id="vormüll_dg2" value="45" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (Jahr €):</label><input type="number" id="vormüll_dg2" value="90.00" onchange="updateAll()" style="flex:0.8;">
                             </div>
                             <div class="name-container">
                                 <label style="color:#047857;">Nachmieter:</label><input type="text" id="nachn_dg2" placeholder="Name Nachmieter" onchange="updateAll()" style="flex:1.5;">
                                 <label>Mon:</label><input type="number" id="nachm_dg2" value="6" onchange="updateAll()" style="flex:0.5;">
                                 <label>Vorausz. (€/M):</label><input type="number" id="nachnk_dg2" value="90" onchange="updateAll()" style="flex:0.8;">
                                 <label>ISTA (€):</label><input type="number" id="nachista_dg2" value="300" onchange="updateAll()" style="flex:0.8;">
-                                <label>Müll (€):</label><input type="number" id="nachmüll_dg2" value="45" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (Jahr €):</label><input type="number" id="nachmüll_dg2" value="90.00" onchange="updateAll()" style="flex:0.8;">
                             </div>
                         </div>
                     </td></tr>
@@ -363,7 +361,7 @@
                         <div class="name-container">
                             <label>Mieter:</label><input type="text" id="name_dg3" value="Selbstbezug / R. Schumann" onchange="updateAll()" style="flex:1.5;">
                             <label>ISTA (Endbetrag €):</label><input type="number" id="ista_dg3" value="0.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
-                            <label>Müll (€):</label><input type="number" id="müll_dg3" value="0.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
+                            <label>Müll (Jahr €):</label><input type="number" id="müll_dg3" value="0.00" placeholder="0.00" onchange="updateAll()" style="flex:1;">
                             <label style="color:#1d4ed8; cursor:pointer;"><input type="checkbox" id="wechsel_dg3" onchange="toggleMieterwechsel('dg3')" style="width:auto; margin-right:4px;"> Mieterwechsel</label>
                         </div>
                         <div id="sub_dg3" style="display:none; margin-top:8px; padding-top:8px; border-top:1px dashed #cbd5e1;" class="sub-mieter">
@@ -372,14 +370,14 @@
                                 <label>Mon:</label><input type="number" id="vorm_dg3" value="6" onchange="updateAll()" style="flex:0.5;">
                                 <label>Vorausz. (€/M):</label><input type="number" id="vornk_dg3" value="0" onchange="updateAll()" style="flex:0.8;">
                                 <label>ISTA (€):</label><input type="number" id="vorista_dg3" value="0" onchange="updateAll()" style="flex:0.8;">
-                                <label>Müll (€):</label><input type="number" id="vormüll_dg3" value="0" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (Jahr €):</label><input type="number" id="vormüll_dg3" value="0" onchange="updateAll()" style="flex:0.8;">
                             </div>
                             <div class="name-container">
                                 <label style="color:#047857;">Nachmieter:</label><input type="text" id="nachn_dg3" placeholder="Name Nachmieter" onchange="updateAll()" style="flex:1.5;">
                                 <label>Mon:</label><input type="number" id="nachm_dg3" value="6" onchange="updateAll()" style="flex:0.5;">
                                 <label>Vorausz. (€/M):</label><input type="number" id="nachnk_dg3" value="0" onchange="updateAll()" style="flex:0.8;">
                                 <label>ISTA (€):</label><input type="number" id="nachista_dg3" value="0" onchange="updateAll()" style="flex:0.8;">
-                                <label>Müll (€):</label><input type="number" id="nachmüll_dg3" value="0" onchange="updateAll()" style="flex:0.8;">
+                                <label>Müll (Jahr €):</label><input type="number" id="nachmüll_dg3" value="0" onchange="updateAll()" style="flex:0.8;">
                             </div>
                         </div>
                     </td></tr>
@@ -421,7 +419,6 @@
 
     <!-- REITER 2 -->
     <div id="tab2" class="tab-content no-print">
-        <!-- AUTOMATISCHER JAHRESPLANER (ICS MÜLL) -->
         <div class="generator-card">
             <h3 style="color: #581c87; margin-bottom: 5px;">📅 Müll-Jahresplan aus ICS erzeugen</h3>
             <p style="font-size:0.85rem; color: #6b21a8; margin-bottom: 10px;">
@@ -434,7 +431,6 @@
             </div>
         </div>
 
-        <!-- SAISONALE AUFGABEN -->
         <div class="seasonal-card">
             <h3 style="color: #0369a1; margin-bottom: 5px;">☀️❄️ Saisonale Hausmeistertätigkeiten (Garten, Winter, Treppe)</h3>
             <p style="font-size:0.85rem; color: #0369a1; margin-bottom: 10px;">
@@ -446,11 +442,10 @@
             </div>
         </div>
 
-        <!-- NEU: KATEGORIE-STUNDENSATZ UND ZEIT (STUNDEN) ANPASSEN -->
         <div class="bulk-card">
             <h3 style="color: #b45309; margin-bottom: 5px;">⚙️ Stundensatz & Zeit für eine ganze Kategorie anpassen</h3>
             <p style="font-size:0.85rem; color: #b45309; margin-bottom: 10px;">
-                Hier können Sie für <strong>alle Einträge einer bestimmten Kategorie</strong> gleichzeitig den Stundensatz und/oder die Stunden (z.B. 0,17 Std. für Müll) ändern.
+                Hier können Sie für <strong>alle Einträge einer bestimmten Kategorie</strong> gleichzeitig den Stundensatz und/oder die Stunden ändern.
             </p>
             <div class="form-grid">
                 <div class="form-group">
@@ -496,7 +491,6 @@
                 </div>
             </div>
 
-            <!-- GESAMT-ZUSAMMENFASSUNGS-BANNER -->
             <div class="grand-total-banner">
                 <div>
                     ⏱️ Gesamtsumme aller geleisteten Stunden
@@ -508,7 +502,6 @@
                 </div>
             </div>
 
-            <!-- DETAILLIERTE STUNDEN- UND KOSTEN-ÜBERSICHT NACH KATEGORIEN -->
             <div class="stats-grid">
                 <div class="stat-card">
                     🧹 Treppenhausreinigung
@@ -549,12 +542,12 @@
     const areas = { ug: 71.00, eg: 118.23, dg1: 45.14, dg2: 102.65, dg3: 40.83 };
     
     let costItems = [
-        { id: '1', name: 'Grundsteuerbescheid', value: 650 }, 
-        { id: '2', name: 'Wohngebäudeversicherung', value: 950 },
-        { id: '3', name: 'Haushaftpflichtversicherung', value: 180 },
-        { id: '4', name: 'Kaminkehrer', value: 220 },
-        { id: '5', name: 'Brenner Kundendienst', value: 300 },
-        { id: '6', name: 'Strom Allgemeinzähler', value: 250 }
+        { id: '1', name: 'Grundsteuerbescheid', value: 394.63 }, 
+        { id: '2', name: 'Wohngebäudeversicherung', value: 970.00 },
+        { id: '3', name: 'Haushaftpflichtversicherung', value: 60.00 },
+        { id: '4', name: 'Kaminkehrer', value: 150.00 },
+        { id: '5', name: 'Brenner Kundendienst', value: 150.00 },
+        { id: '6', name: 'Strom Allgemeinzähler', value: 500.00 }
     ];
     let entries = [];
 
@@ -1123,20 +1116,28 @@
                 months = parseFloat(document.getElementById('vorm_' + whg).value) || 0;
                 vorauszahlungMonat = parseFloat(document.getElementById('vornk_' + whg).value) || 0;
                 istaKosten = parseFloat(document.getElementById('vorista_' + whg).value) || 0;
-                muellKosten = parseFloat(document.getElementById('vormüll_' + whg).value) || 0;
+                // KORREKTUR: Auch beim Vormieter die Jahresgebühr aus 'vormüll' nehmen und zeitanteilig berechnen
+                let rawVorMuell = parseFloat(document.getElementById('vormüll_' + whg).value) || 0;
+                muellKosten = (rawVorMuell / 12) * months;
                 tenantName = document.getElementById('vorn_' + whg).value || 'Vormieter';
             } else {
                 months = parseFloat(document.getElementById('nachm_' + whg).value) || 0;
                 vorauszahlungMonat = parseFloat(document.getElementById('nachnk_' + whg).value) || 0;
                 istaKosten = parseFloat(document.getElementById('nachista_' + whg).value) || 0;
-                muellKosten = parseFloat(document.getElementById('nachmüll_' + whg).value) || 0;
+                // KORREKTUR: Auch beim Nachmieter die Jahresgebühr aus 'nachmüll' nehmen und zeitanteilig berechnen
+                let rawNachMuell = parseFloat(document.getElementById('nachmüll_' + whg).value) || 0;
+                muellKosten = (rawNachMuell / 12) * months;
                 tenantName = document.getElementById('nachn_' + whg).value || 'Nachmieter';
             }
         } else {
             months = parseFloat(document.getElementById('months_' + whg)?.value) || 12;
             vorauszahlungMonat = parseFloat(document.getElementById('nk_' + whg)?.value) || 0;
             istaKosten = parseFloat(document.getElementById('ista_' + whg)?.value) || 0;
-            muellKosten = parseFloat(document.getElementById('müll_' + whg)?.value) || 0;
+            let rawMuell = parseFloat(document.getElementById('müll_' + whg)?.value) || 0;
+            
+            // Automatische zeitanteilige Berechnung der eingegebenen Jahres-Müllgebühr
+            muellKosten = (rawMuell / 12) * months;
+            
             tenantName = document.getElementById('name_' + whg)?.value || '';
         }
 
@@ -1153,8 +1154,8 @@
 
         let generalShare = ((totalGeneralCosts + totalEigenbelege) / totalArea) * area * (months / 12);
         
-        let totalWohnungKosten = generalShare + istaKosten + muellKosten;
-        let saldo = gesamtVorauszahlungNk - (generalShare + muellKosten) - istaKosten;
+        let kaltSaldo = generalShare + muellKosten - gesamtVorauszahlungNk;
+        let saldo = -(kaltSaldo + istaKosten);
 
         let now = new Date();
         let printDateStr = now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -1185,11 +1186,12 @@
 
             <u>Kostenübersicht der Einheit:</u><br>
             ${costDetailsHtml}
-            • ISTA-Heizkosten (Endbetrag inkl. Berücksichtigung von ISTA-Vorauszahlungen): <strong>${istaKosten.toFixed(2)} €</strong><br>
-            • Mülltonnengebühr (direkt): <strong>${muellKosten.toFixed(2)} €</strong><br>
+            • ISTA-Heizkosten (Nachzahlung / Endsaldo): <strong>${istaKosten.toFixed(2)} €</strong><br>
+            • Mülltonnengebühr (zeitanteilig für ${months} Monate): <strong>${muellKosten.toFixed(2)} €</strong><br>
             <hr style="margin: 12px 0; border: 0; border-top: 1px solid #cbd5e1;">
-            <strong>Gesamtkosten der Einheit:</strong> ${totalWohnungKosten.toFixed(2)} €<br>
-            <strong>Gezahlte Vorauszahlung (Nebenkosten):</strong> ${gesamtVorauszahlungNk.toFixed(2)} €<br><br>
+            <strong>Gesamtkosten der kalten Nebenkosten + Müll:</strong> ${(generalShare + muellKosten).toFixed(2)} €<br>
+            <strong>Gezahlte Vorauszahlung (Nebenkosten):</strong> ${gesamtVorauszahlungNk.toFixed(2)} €<br>
+            <strong>ISTA-Heizkosten (Saldo):</strong> ${istaKosten.toFixed(2)} €<br><br>
             <span style="font-size: 1.2rem; color: ${saldo >= 0 ? 'var(--success)' : 'var(--danger)'};">
                 <strong>${saldo >= 0 ? 'Guthaben für Mieter: ' + saldo.toFixed(2) + ' €' : 'Nachzahlung durch Mieter: ' + Math.abs(saldo).toFixed(2) + ' €'}</strong>
             </span>
