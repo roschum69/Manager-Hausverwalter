@@ -1159,7 +1159,6 @@
             vorauszahlungMonat = parseFloat(document.getElementById('nk_' + whg)?.value) || 0;
             istaKosten = parseFloat(document.getElementById('ista_' + whg)?.value) || 0;
             
-            // KORREKTUR: Müllgebühr wird hier nun präzise mit der echten Monats-Dezimalzahl (z.B. 6.5 / 12) multipliziert
             let jahresMuell = parseFloat(document.getElementById('müll_' + whg)?.value) || 0;
             muellKosten = jahresMuell * (months / 12);
             
