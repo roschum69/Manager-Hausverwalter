@@ -694,10 +694,15 @@
         entries.forEach(e => {
             let rate = e.rate !== undefined ? e.rate : 15.00;
             let sum = (e.hours * rate) + (e.expenses || 0);
-            if (catTotals[e.category] !== undefined) {
-                catTotals[e.category] += sum;
+            
+            // Tippfehler-Schutz: falls sich "Hausmeistertätikeit" einschleicht, direkt auf die echte Kategorie rechnen
+            let cat = e.category;
+            if (cat === 'Hausmeistertätikeit') cat = 'Hausmeistertätigkeit';
+
+            if (catTotals[cat] !== undefined) {
+                catTotals[cat] += sum;
             } else {
-                catTotals[e.category] = sum;
+                catTotals[cat] = sum;
             }
         });
         return catTotals;
@@ -707,15 +712,18 @@
         let container = document.getElementById('costItemsContainer');
         container.innerHTML = '';
         
-        // 1. Manuelle Kostenarten anzeigen
+        // 1. Manuelle Kostenarten anzeigen (Automatischer Schutz gegen alte 12-€-Tippfehler-Einträge)
         costItems.forEach(item => {
+            if (item.name.toLowerCase().includes('hausmeistertätikeit') || item.value === 12) {
+                return; // Überspringt fehlerhafte Altlasten
+            }
             let div = document.createElement('div');
             div.className = 'cost-row';
             div.innerHTML = `<div style="flex:2;"><strong>${item.name}</strong></div><div style="flex:1;"><input type="number" value="${item.value}" onchange="updateCost('${item.id}', this.value)"></div><button class="btn-delete btn-sm" onclick="removeCost('${item.id}')">Löschen</button>`;
             container.appendChild(div);
         });
 
-        // 2. Automatische Eigenbeleg-Kategorien berechnen und JEDE Kategorie NUR 1x als sauberen Posten anzeigen
+        // 2. Automatisierte Eigenbeleg-Kategorien berechnen
         let catTotals = getEigenbelegeByCategories();
         for (let cat in catTotals) {
             if (catTotals[cat] > 0) {
@@ -799,12 +807,15 @@
             
             grandTotalHours += e.hours;
 
-            if (stats[e.category]) {
-                stats[e.category].hours += e.hours;
-                stats[e.category].sum += sum;
+            let cat = e.category;
+            if (cat === 'Hausmeistertätikeit') cat = 'Hausmeistertätigkeit';
+
+            if (stats[cat]) {
+                stats[cat].hours += e.hours;
+                stats[cat].sum += sum;
             }
 
-            if (filterVal !== 'alle' && e.category !== filterVal) return;
+            if (filterVal !== 'alle' && cat !== filterVal) return;
 
             total += sum;
             let parts = e.date.split('-');
@@ -813,7 +824,7 @@
             let tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${formattedDate}</td>
-                <td><strong>${e.category}</strong><br><small>${e.desc}</small></td>
+                <td><strong>${cat}</strong><br><small>${e.desc}</small></td>
                 <td>${e.hours} Std. à ${rate.toFixed(2)} €</td>
                 <td>${sum.toFixed(2)} €</td>
                 <td>
@@ -880,7 +891,7 @@
 
         let count = 0;
         entries.forEach(e => {
-            if (e.category === targetCat) {
+            if (e.category === targetCat || (targetCat === 'Hausmeistertätigkeit' && e.category === 'Hausmeistertätikeit')) {
                 if (mode === 'rate' || mode === 'both') {
                     e.rate = newRate;
                 }
